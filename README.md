@@ -1,5 +1,5 @@
 # Tumor-T-Cell-Action
-The growth of tumors attracts a response by the immune system in the form of T-Cells. T-Cells struggle to deal with tumors due to a variety of complications, resulting in exhaustion; the destruction of their offensive abilities. Yet, there is a massive presence of bystander T-Cells that are yet to engage tumors. 
+The growth of tumors attracts a response by the immune system in the form of T-Cells. T-Cells struggle to deal with tumors due to a variety of complications, resulting in terminal exhaustion characterized by loss of function and proliferative capacity. However, solid tumors frequently harbor large infiltrates of non-exhausted bystander T-Cells with intact cytolytic potential.
 
 This project aims to use public data regarding the composition of cells at a tumor site (Colorectal Cancer) to identify not only bystander T-Cells but also compare them to their accompanying exhausted T-Cells to mark worthy cells capable of fighting tumors. Worthiness is based on possession of requisite genes to fight tumors whilst not having genes associated with exhaustion. All code is in `data_analysis.py`.
 
