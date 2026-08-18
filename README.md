@@ -1,7 +1,7 @@
 # Tumor-T-Cell-Action
 The growth of tumors attracts a response by the immune system in the form of T-Cells. T-Cells struggle to deal with tumors due to a variety of complications, resulting in terminal exhaustion characterized by loss of function and proliferative capacity. However, solid tumors frequently harbor large infiltrates of non-exhausted bystander T-Cells with intact cytolytic potential.
 
-This project aims to use public data regarding the composition of cells at a tumor site (Colorectal Cancer) to identify not only bystander T-Cells but also compare them to their accompanying exhausted T-Cells to mark worthy cells capable of fighting tumors. Worthiness is based on possession of requisite genes to fight tumors whilst not having genes associated with exhaustion. All code is in `data_analysis.py`.
+This project aims to use public data regarding the composition of cells at a tumor site (Colorectal Cancer) to identify not only bystander T-Cells but also compare them to their accompanying exhausted T-Cells to quantify a T-Cell Engager Worthiness Score. This metric scores single cells based on preserved cytotoxic machinery and CD3 receptor availability against the absence of co-inhibitory checkpoint receptors. All code is in `data_analysis.py`.
 
 ## Gene & Cell Analysis
 Grouping Cells from the Original Dataset
@@ -12,7 +12,7 @@ Categorizing the Groupings based on Genes (Bystander, Exhausted found)
 
 ![alt text](Plots/Plot_2.png)
 
-Most Worthy Cells 
+T-Cell Engager Worthiness Score
 
 ![alt text](Plots/Plot_3.png)
 
