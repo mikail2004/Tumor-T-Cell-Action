@@ -222,6 +222,6 @@ sc.pl.umap(adata,
            color=['cell_type', 'worthiness'],
            cmap='coolwarm', # Color palette
            vmin='p1', # Set minimum threshold to filter extreme values
-           vmax='p99',
-           title='Target Bystander Worthiness Score') # Set max threshold to filter extreme values
+           vmax='p99', # Set max threshold to filter extreme values
+           ) 
 # ----------- END OF CODE ------------ #
