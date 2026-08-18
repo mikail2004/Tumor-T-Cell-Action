@@ -1,6 +1,6 @@
 # TTCA 
 # Tumor T-Cell Action
-# Mikail U.
+# Mikail U. Bukhari
 
 # ----------- INTRODUCTION ------------ #
 # Scanpy – Single-Cell Analysis in Python (GPU version available)
@@ -25,8 +25,10 @@ Notes:
     to have the same total sum of counts (I.E 10,000 total counts per cell). 
     This ensures fair comparisons (I.E if one cell had 10k counts and the other 20k).
 7. Log-Transformation (log1p): It applies ln(1 + x) to compress extreme differences in scale (variance stabilization) 
-    and handle zeros mathematically ($\ln(1+0) = 0$). This prevents genes with high counts from dominating PCA 
+    and handle zeros mathematically (ln(1+0) = 0). This prevents genes with high counts from dominating PCA 
     and clustering over low-count regulatory genes.
+8. Adjusted P-value: Calculates probabilistic score of expected error across multiple runs.
+9. (-log(10)): Makes extreme values discernable, especially for visualizing through graphs.
 """
 
 # ----------- REQUIREMENTS ------------ #
@@ -34,6 +36,11 @@ import scanpy as sc
 import pandas as pd
 import numpy as np
 from scipy import sparse
+import gseapy as gp
+import os
+
+output_dir = "./enrichr_results"
+os.makedirs(output_dir, exist_ok=True)
 
 # Loading data (No un-compression needed)
 raw_data_path = "GSE108989_CRC.TCell.S11138.count.txt.gz"
@@ -64,6 +71,10 @@ print(f"Matrix shape (Gene x Cells) : {drops.shape}")
 adata = sc.AnnData(X=drops.T.values, 
                    obs=pd.DataFrame(index=drops.columns), # cells
                    var=pd.DataFrame(index=gene_symbols)) # genes
+
+# Remove duplicate entries
+adata.var_names_make_unique()
+adata.obs_names_make_unique()
 
 print(adata)
 
@@ -164,3 +175,53 @@ sig_genes = diff_exp[(diff_exp['pvals_adj'] < 0.05) & (diff_exp['logfoldchanges'
 
 print('Top upregulated genes between Bystander and Exhausted T-Cells')
 print(sig_genes[['names', 'logfoldchanges', 'pvals_adj']].head(10))
+
+# ----------- PATHWAY ENRICHMENT ------------ #
+# Use differential expression results to find pathways for found significant genes
+gene_list = sig_genes['names'].head(150).tolist()
+
+pathways = gp.enrichr(
+    gene_list=gene_list,
+    gene_sets=['MSigDB_Hallmark_2020', 'KEGG_2021_Human', 'GO_Biological_Process_2023'],
+    organism='human',
+    outdir=output_dir,
+    no_plot=True,
+    verbose=True)
+
+# Print & Plot top enriched pathways found:
+print(' ~ Pathways in Bystander T-Cells ~ ')
+print(pathways.results[['Gene_set', 'Term', 'Adjusted P-value']].head(10))
+gp.barplot(pathways.res2d, 
+           title='Pathways in Bystander T-Cells', 
+           column='Adjusted P-value', 
+           group='Gene_set', 
+           size=10, 
+           top_term=5,
+           ofname="./enrichr_results/PATHWAYS_PLOT.png")
+
+# ----------- ENGAGER TARGET WORTHINESS ------------ #
+# Find which bystander T-Cells have:
+# 1. high cytotoxic machinery (GZMB, NKG7) 
+# 2. high CD3 receptor availability (CD3E, CD3D)
+# 3. low exhaustion checkpoints (PDCD1, HAVCR2, LAG3)
+
+# Target vs. exhaustion gene sets
+target_genes = [g for g in ['CD3E', 'CD3D', 'GZMB', 'PRF1', 'NKG7'] if g in adata.var_names]
+exhaustion_genes = [g for g in ['PDCD1', 'HAVCR2', 'LAG3', 'TIGIT', 'ENTPD1'] if g in adata.var_names]
+
+# Score cell states
+sc.tl.score_genes(adata, gene_list=target_genes, score_name='target_potential', use_raw=False)
+sc.tl.score_genes(adata, gene_list=exhaustion_genes, score_name='exhaustion_score', use_raw=False)
+
+# Calculate target worthiness
+adata.obs['worthiness'] = adata.obs['target_potential'] - adata.obs['exhaustion_score']
+
+# Visualize on UMAP
+#sc.pl.umap(adata, color=['cell_type', 'target_potential', 'exhaustion_score', 'worthiness'])
+sc.pl.umap(adata, 
+           color=['cell_type', 'worthiness'],
+           cmap='coolwarm', # Color palette
+           vmin='p1', # Set minimum threshold to filter extreme values
+           vmax='p99',
+           title='Target Bystander Worthiness Score') # Set max threshold to filter extreme values
+# ----------- END OF CODE ------------ #
