@@ -10,15 +10,15 @@ Grouping Cells from the Original Dataset
 
 Categorizing the Groupings based on Genes (Bystander, Exhausted found)
 
-![alt text](Plot/Plot_2.png)
+![alt text](Plots/Plot_2.png)
 
 Most Worthy Cells 
 
-![alt text](Support/Plot_3.png)
+![alt text](Plots/Plot_3.png)
 
 Gene Pathway Information
 
-![alt text](Support/Plot_4.png)
+![alt text](Plots/Plot_4.png)
 
 ## Dataset & Dataset Structure
 [Series-GSE108989-Colorectal-Cancer](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE108989)
