@@ -18,6 +18,15 @@ Notes:
     overstimulates them. This chronic activation effects their genes and metabolism, 
     causing them to lose their ability to multiply (checkpoints) and kill cancer cells. 
 4. Tumors steal vital nutrients from the locality, starving T-cells. 
+5. Matrix Dimensions: In the raw dataset, each column is an individual cell and each row is a specific gene. 
+    The number at the intersection is the count of mRNA transcripts detected 
+    for that specific gene in that specific cell. 
+6. Normalization: It corrects for differences in sequencing depth by scaling every cell 
+    to have the same total sum of counts (I.E 10,000 total counts per cell). 
+    This ensures fair comparisons (I.E if one cell had 10k counts and the other 20k).
+7. Log-Transformation (log1p): It applies ln(1 + x) to compress extreme differences in scale (variance stabilization) 
+    and handle zeros mathematically ($\ln(1+0) = 0$). This prevents genes with high counts from dominating PCA 
+    and clustering over low-count regulatory genes.
 """
 
 # ----------- REQUIREMENTS ------------ #
@@ -96,3 +105,62 @@ sc.tl.rank_genes_groups(adata, 'leiden', method='wilcoxon')
 # Finally identify top 5 genes for each grouping using <gene_symbols> in dataset
 # Use this to find genes that correspond to bystander T-cells 
 print(pd.DataFrame(adata.uns['rank_genes_groups']['names']).head(5))
+
+# ----------- ASSIGN LABELS TO GROUPINGS ------------ #
+# 1. Creating marker dictionary for major T-cell phenotypes
+marker_database = {
+    'Tregs': {'FOXP3', 'IL2RA', 'CTLA4', 'TNFRSF18', 'BATF', 'CCR8'},
+    'Terminally Exhausted CD8+': {'HAVCR2', 'ENTPD1', 'CXCL13', 'LAYN', 'ITGAE', 'TOX', 'PDCD1'},
+    'Cytotoxic / Bystander': {'NKG7', 'KLRG1', 'GZMH', 'CX3CR1', 'FGFBP2', 'GNLY', 'PRF1'},
+    'Naive / Stem-like Memory': {'SELL', 'TCF7', 'LEF1', 'CCR7', 'IL7R'},
+    'Effector / Activated': {'GZMK', 'CCL4', 'CCL5', 'JUNB', 'FOS', 'CD69'}
+}
+
+# Repeating identification of top genes but for actual analysis now
+top_n = 15  # Using top 15 genes gives better matching precision than just 5
+rank_names = pd.DataFrame(adata.uns['rank_genes_groups']['names']).head(top_n)
+
+# Assign the best-matching label based on highest gene overlap count
+cluster_labels = {}
+for cluster in rank_names.columns:
+    cluster_top_genes = set(rank_names[cluster])
+
+    # Calculate overlap count with each biological state
+    scores = {
+        cell_state: len(cluster_top_genes.intersection(genes)) 
+        for cell_state, genes in marker_database.items()
+    }
+    
+    # Pick the state with the highest overlap
+    best_match = max(scores, key=scores.get)
+    
+    # Fallback to Unclassified if no markers match
+    cluster_labels[cluster] = best_match if scores[best_match] > 0 else f'Cluster {cluster} (Unassigned)'
+
+# Map directly back into AnnData
+adata.obs['cell_type'] = adata.obs['leiden'].map(cluster_labels)
+
+# Plot and check assignments
+print("Automated Cluster Assignments:")
+for cl, label in cluster_labels.items():
+    print(f"Cluster {cl} -> {label}")
+
+sc.pl.umap(adata, color=['cell_type'])
+
+# ----------- DIFFERENTIAL EXPRESSION ------------ #
+# Compare bystander T-cells to exhausted T-cells to isolate exact genes that maintain bystander behavior
+sc.tl.rank_genes_groups(
+    adata,
+    groupby='cell_type',
+    groups=['Cytotoxic / Bystander'],
+    reference='Terminally Exhausted CD8+',
+    method='wilcoxon')
+
+# Extract differential expression to dataframe
+diff_exp = sc.get.rank_genes_groups_df(adata, group='Cytotoxic / Bystander')
+
+# Find significant genes from resulting differential expression
+sig_genes = diff_exp[(diff_exp['pvals_adj'] < 0.05) & (diff_exp['logfoldchanges'] > 1.0)]
+
+print('Top upregulated genes between Bystander and Exhausted T-Cells')
+print(sig_genes[['names', 'logfoldchanges', 'pvals_adj']].head(10))
