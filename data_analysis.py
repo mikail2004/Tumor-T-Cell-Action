@@ -29,6 +29,8 @@ Notes:
     and clustering over low-count regulatory genes.
 8. Adjusted P-value: Calculates probabilistic score of expected error across multiple runs.
 9. (-log(10)): Makes extreme values discernable, especially for visualizing through graphs.
+10. Highly variable genes: Identifies genes whose activity levels vary across all cells 
+    significantly more than expected by technical noise.
 """
 
 # ----------- REQUIREMENTS ------------ #
